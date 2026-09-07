@@ -1,3 +1,6 @@
 langchain
 langchain-groq
 python-dotenv
+
+pypdf
+langchain-community
