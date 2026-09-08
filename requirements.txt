@@ -4,3 +4,5 @@ python-dotenv
 
 pypdf
 langchain-community
+
+langchain-text-splitters
