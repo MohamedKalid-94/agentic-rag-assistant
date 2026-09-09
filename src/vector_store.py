@@ -63,9 +63,12 @@ client = chromadb.PersistentClient(
 # --------------------------------------------------
 
 collection = client.get_or_create_collection(
-    name="agentic_rag"
+    name="roadmap_collection",
+    metadata={"hnsw:space": "cosine"}
 )
 
+print("\nChroma collection metadata:")
+print(collection.metadata)
 
 # --------------------------------------------------
 # 7. PREPARE DATA

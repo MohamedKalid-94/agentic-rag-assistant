@@ -10,8 +10,8 @@ def clean_text(text: str):
 
     # Remove repeated PDF footer
     text = re.sub(
-        r"120 Days · Agentic AI Engineering RoadMap 2026\s*\*"
-        r"The Planner Sheet · Minimum 2 Hours / Day · Month-wise Topics · Week-wise Deliverables · Free Resources\s*\*"
+        r"120 Days · Agentic AI Engineering RoadMap 2026\s*"
+        r"The Planner Sheet · Minimum 2 Hours / Day · Month-wise Topics · Week-wise Deliverables · Free Resources\s*"
         r"AI Coach John\s*\|\s*PROITBRIDGE Page \d+ of \d+",
         "",
         text,
