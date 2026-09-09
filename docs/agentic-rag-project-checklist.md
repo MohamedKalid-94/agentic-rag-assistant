@@ -42,7 +42,7 @@
 - [x] **Day 4:** Embeddings — generate vectors for chunks, inspect similarity manually
 - [x] **Day 5:** Vector database setup (Chroma) — store chunks with metadata, run raw similarity search
 - [x] **Day 6:** LangGraph fundamentals — StateGraph, nodes, edges, conditional edges (build 2-3 toy graphs)
-- [] **Day 7:** Build the Retrieve node using your vector store as a graph node
+- [x] **Day 7:** Build the Retrieve node using your vector store as a graph node
 
 ### Week 2 — Agentic layer (routing, self-correction) + polish
 - [ ] **Day 8:** Build the Grade relevance node (LLM judges retrieved chunks) + conditional edge back to Retrieve with a rewritten query
