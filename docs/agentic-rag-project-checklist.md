@@ -45,7 +45,7 @@
 - [x] **Day 7:** Build the Retrieve node using your vector store as a graph node
 
 ### Week 2 — Agentic layer (routing, self-correction) + polish
-- [ ] **Day 8:** Build the Grade relevance node (LLM judges retrieved chunks) + conditional edge back to Retrieve with a rewritten query
+- [x] **Day 8:** Build the Grade relevance node (LLM judges retrieved chunks) + conditional edge back to Retrieve with a rewritten query
 - [ ] **Day 9:** Build the Generate answer node — prompt template that answers strictly from context and cites sources
 - [ ] **Day 10:** Build the Check groundedness node (LLM verifies no hallucination) + conditional edge back to Generate on failure
 - [ ] **Day 11:** Wire the full graph end-to-end (Query → Retrieve → Grade → Generate → Check → Finalize), test with real questions including ones that should trigger both loops
