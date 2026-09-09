@@ -3,19 +3,15 @@ import chromadb
 from ingestion import load_documents
 from chunking import clean_text, split_documents
 from embeddings import get_embedding_model
+from query_analyzer import extract_filters
 
 
 # --------------------------------------------------
 # 1. LOAD DOCUMENTS
 # --------------------------------------------------
 
-documents = load_documents(
-    "data/documents"
-)
-
-print(
-    f"Loaded {len(documents)} documents/pages"
-)
+documents = load_documents("data/documents")
+print(f"Loaded {len(documents)} documents/pages")
 
 
 # --------------------------------------------------
@@ -23,23 +19,15 @@ print(
 # --------------------------------------------------
 
 for doc in documents:
-
-    doc.page_content = clean_text(
-        doc.page_content
-    )
+    doc.page_content = clean_text(doc.page_content)
 
 
 # --------------------------------------------------
 # 3. CREATE CHUNKS
 # --------------------------------------------------
 
-chunks = split_documents(
-    documents
-)
-
-print(
-    f"Total chunks: {len(chunks)}"
-)
+chunks = split_documents(documents)
+print(f"Total chunks: {len(chunks)}")
 
 
 # --------------------------------------------------
@@ -53,9 +41,7 @@ embedder = get_embedding_model()
 # 5. CREATE CHROMA CLIENT
 # --------------------------------------------------
 
-client = chromadb.PersistentClient(
-    path="data/chroma"
-)
+client = chromadb.PersistentClient(path="data/chroma_db")
 
 
 # --------------------------------------------------
@@ -70,42 +56,23 @@ collection = client.get_or_create_collection(
 print("\nChroma collection metadata:")
 print(collection.metadata)
 
+
 # --------------------------------------------------
 # 7. PREPARE DATA
 # --------------------------------------------------
 
-ids = [
-    f"chunk_{i}"
-    for i in range(len(chunks))
-]
-
-texts = [
-    chunk.page_content
-    for chunk in chunks
-]
-
-metadatas = [
-    chunk.metadata
-    for chunk in chunks
-]
+ids = [f"chunk_{i}" for i in range(len(chunks))]
+texts = [chunk.page_content for chunk in chunks]
+metadatas = [chunk.metadata for chunk in chunks]
 
 
 # --------------------------------------------------
 # 8. GENERATE EMBEDDINGS
 # --------------------------------------------------
 
-embeddings = embedder.embed_documents(
-    texts
-)
-
-print(
-    f"Generated {len(embeddings)} embeddings"
-)
-
-print(
-    f"Embedding dimension: "
-    f"{len(embeddings[0])}"
-)
+embeddings = embedder.embed_documents(texts)
+print(f"Generated {len(embeddings)} embeddings")
+print(f"Embedding dimension: {len(embeddings[0])}")
 
 
 # --------------------------------------------------
@@ -118,55 +85,42 @@ collection.upsert(
     embeddings=embeddings,
     metadatas=metadatas
 )
-
-print(
-    f"Stored {collection.count()} chunks in Chroma"
-)
+print(f"Stored {collection.count()} chunks in Chroma")
 
 
 # --------------------------------------------------
-# 10. RAW SIMILARITY SEARCH
+# 10. FILTERED SIMILARITY SEARCH
 # --------------------------------------------------
 
-query = (
-    "What topics are covered in "
-    "Week 1 of Month 2?"
-)
+query = "What topics are covered in Week 1 of Month 2?"
+query_embedding = embedder.embed_query(query)
 
-query_embedding = embedder.embed_query(
-    query
-)
+filters = extract_filters(query)
+print(f"\nExtracted filters: {filters}")
 
-
-results = collection.query(
-    query_embeddings=[query_embedding],
-    n_results=5
-)
+if filters:
+    where_clause = filters if len(filters) == 1 else {"$and": [{k: v} for k, v in filters.items()]}
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=5,
+        where=where_clause
+    )
+else:
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=5
+    )
 
 
 # --------------------------------------------------
 # 11. DISPLAY RESULTS
 # --------------------------------------------------
 
-print(
-    "\n" + "=" * 70
-)
+print("\n" + "=" * 70)
+print(f"QUERY: {query}")
+print("=" * 70)
 
-print(
-    f"QUERY: {query}"
-)
-
-print(
-    "=" * 70
-)
-
-
-for rank, (
-    result_id,
-    document,
-    metadata,
-    distance
-) in enumerate(
+for rank, (result_id, document, metadata, distance) in enumerate(
     zip(
         results["ids"][0],
         results["documents"][0],
@@ -175,7 +129,6 @@ for rank, (
     ),
     start=1
 ):
-
     print("\n" + "-" * 70)
     print(f"Rank     : {rank}")
     print(f"ID       : {result_id}")

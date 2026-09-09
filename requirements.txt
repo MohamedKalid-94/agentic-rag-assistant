@@ -12,3 +12,5 @@ langchain-huggingface
 numpy
 
 chromadb
+
+langgraph
