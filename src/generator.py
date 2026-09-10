@@ -3,10 +3,8 @@ from langchain_groq import ChatGroq
 
 load_dotenv()
 
-
 def get_generator():
     return ChatGroq(model="openai/gpt-oss-20b", temperature=0)
-
 
 def generate_answer(question: str, chunks: list) -> str:
     """
@@ -33,7 +31,7 @@ def generate_answer(question: str, chunks: list) -> str:
         f"Question: {question}\n\n"
         f"Answer:"
     )
-
+    
     response = llm.invoke(prompt)
     return response.content
 

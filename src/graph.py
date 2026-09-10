@@ -37,7 +37,7 @@ graph = builder.compile()
 
 
 if __name__ == "__main__":
-    question = "What is the capital of France?"
+    question = "What topics are covered in Week 1 of Month 2?"
 
     result = graph.invoke({
         "question": question,
@@ -53,5 +53,4 @@ if __name__ == "__main__":
 
     print("\n=== FINAL ANSWER ===")
     print(result["answer"])
-    print(f"\nRelevant: {result['is_relevant']} | Retrieval attempts: {result['attempts']}")
-    print(f"Grounded: {result['is_grounded']} | Generation attempts: {result['generation_attempts']}")
+    print(f"\nGrounded: {result['is_grounded']} | Generation attempts: {result['generation_attempts']}")
