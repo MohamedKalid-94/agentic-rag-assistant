@@ -11,6 +11,12 @@ class RelevanceGrade(BaseModel):
     reasoning: str = Field(description="Brief explanation of the judgment")
 
 
+class GroundednessGrade(BaseModel):
+    """Judgment on whether an answer is actually supported by the given context."""
+    is_grounded: bool = Field(description="True if every claim in the answer is supported by the context")
+    reasoning: str = Field(description="Brief explanation of the judgment")
+
+
 def get_grader():
     llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0)
     return llm.with_structured_output(RelevanceGrade)
@@ -21,7 +27,7 @@ def grade_relevance(question: str, chunks: list) -> RelevanceGrade:
     if not chunks:
         return RelevanceGrade(is_relevant=False, reasoning="No chunks were retrieved.")
 
-    context = "\n\n---\n\n".join(chunk[1] for chunk in chunks)  # chunk[1] = document text
+    context = "\n\n---\n\n".join(chunk[1] for chunk in chunks)
 
     grader = get_grader()
     result = grader.invoke(
@@ -44,22 +50,44 @@ def rewrite_query(original_question: str) -> str:
     return response.content.strip()
 
 
+def get_groundedness_grader():
+    llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0)
+    return llm.with_structured_output(GroundednessGrade)
+
+
+def check_groundedness(answer: str, chunks: list) -> GroundednessGrade:
+    """Uses the LLM to verify the answer doesn't contain claims unsupported by the retrieved context."""
+    context = "\n\n---\n\n".join(chunk[1] for chunk in chunks)
+
+    grader = get_groundedness_grader()
+    result = grader.invoke(
+        f"Context:\n{context}\n\n"
+        f"Generated answer:\n{answer}\n\n"
+        f"Does this answer contain ONLY information that is directly supported by the context? "
+        f"Flag it as NOT grounded if it adds any fact, number, or claim not present in the context above. "
+        f"An honest 'I don't know' / 'the context doesn't contain this' answer should always be marked grounded."
+    )
+    return result
+
+
 if __name__ == "__main__":
-    # Quick standalone test
     from retriever import retrieve
+    from generator import generate_answer
 
     question = "What topics are covered in Week 1 of Month 2?"
     chunks, filters = retrieve(question)
+    answer = generate_answer(question, chunks)
 
-    grade = grade_relevance(question, chunks)
-    print(f"Question: {question}")
-    print(f"Is relevant: {grade.is_relevant}")
-    print(f"Reasoning: {grade.reasoning}")
+    grounded = check_groundedness(answer, chunks)
+    print(f"Answer:\n{answer}")
+    print(f"\nIs grounded: {grounded.is_grounded}")
+    print(f"Reasoning: {grounded.reasoning}")
 
-    # Test with a question that should NOT match well
-    bad_question = "What is the capital of France?"
-    bad_chunks, _ = retrieve(bad_question, use_filters=False)
-    bad_grade = grade_relevance(bad_question, bad_chunks)
-    print(f"\nQuestion: {bad_question}")
-    print(f"Is relevant: {bad_grade.is_relevant}")
-    print(f"Reasoning: {bad_grade.reasoning}")
+    fake_answer = (
+        "The topics covered in Week 1 of Month 2 include Deep Learning fundamentals, "
+        "and this week was taught by Dr. Andrew Ng in a 12-hour live workshop with a certification exam."
+    )
+    fake_grounded = check_groundedness(fake_answer, chunks)
+    print(f"\n\nFake answer:\n{fake_answer}")
+    print(f"\nIs grounded: {fake_grounded.is_grounded}")
+    print(f"Reasoning: {fake_grounded.reasoning}")

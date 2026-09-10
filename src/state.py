@@ -10,3 +10,5 @@ class AgentState(TypedDict):
     is_relevant: bool
     attempts: int
     answer: str
+    is_grounded: bool
+    generation_attempts: int
