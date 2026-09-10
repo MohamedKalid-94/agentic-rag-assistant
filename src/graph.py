@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
 from state import AgentState
-from nodes import retrieve_node, grade_node, rewrite_node, check_relevance
+from nodes import retrieve_node, grade_node, rewrite_node, generate_node, check_relevance
 
 
 builder = StateGraph(AgentState)
@@ -8,6 +8,7 @@ builder = StateGraph(AgentState)
 builder.add_node("retrieve", retrieve_node)
 builder.add_node("grade", grade_node)
 builder.add_node("rewrite", rewrite_node)
+builder.add_node("generate", generate_node)
 
 builder.set_entry_point("retrieve")
 builder.add_edge("retrieve", "grade")
@@ -17,27 +18,28 @@ builder.add_conditional_edges(
     check_relevance,
     {
         "retry": "rewrite",
-        "done": END
+        "generate": "generate"
     }
 )
 
-builder.add_edge("rewrite", "retrieve")  # after rewriting, go back and retrieve again
+builder.add_edge("rewrite", "retrieve")
+builder.add_edge("generate", END)
 
 graph = builder.compile()
 
 
 if __name__ == "__main__":
-    bad_question = "What is the capital of France?"
+    question = "What is the capital of France?"
 
     result = graph.invoke({
-        "question": bad_question,
-        "original_question": bad_question,
+        "question": question,
+        "original_question": question,
         "filters": {},
         "retrieved_chunks": [],
         "is_relevant": False,
-        "attempts": 0
+        "attempts": 0,
+        "answer": ""
     })
 
-    print("\n=== FINAL STATE ===")
-    print(f"Relevant: {result['is_relevant']}")
-    print(f"Attempts: {result['attempts']}")
+    print("\n=== FINAL ANSWER ===")
+    print(result["answer"])

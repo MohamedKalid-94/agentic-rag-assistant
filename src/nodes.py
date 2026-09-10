@@ -1,7 +1,7 @@
 from state import AgentState
 from retriever import retrieve
 from grader import grade_relevance, rewrite_query
-
+from generator import generate_answer
 
 def retrieve_node(state: AgentState) -> AgentState:
     """LangGraph node: retrieves chunks for the current question."""
@@ -28,12 +28,17 @@ def rewrite_node(state: AgentState) -> AgentState:
     print(f"[rewrite_node] Rewritten question: {new_question}")
     return state
 
+def generate_node(state: AgentState) -> AgentState:
+    """LangGraph node: generates the final answer from relevant chunks."""
+    answer = generate_answer(state["original_question"], state["retrieved_chunks"])
+    state["answer"] = answer
+    print(f"[generate_node] Answer generated ({len(answer)} chars)")
+    return state
 
 def check_relevance(state: AgentState) -> str:
-    """Conditional: decide whether to retry or finish, based on the grade and attempt count."""
     if state["is_relevant"]:
-        return "done"
+        return "generate"
     if state["attempts"] >= 3:
-        print("[check_relevance] Max attempts reached — giving up")
-        return "done"
+        print("[check_relevance] Max attempts reached — generating best-effort answer anyway")
+        return "generate"
     return "retry"
