@@ -14,3 +14,6 @@ numpy
 chromadb
 
 langgraph
+
+rank-bm25
+sentence-transformers
