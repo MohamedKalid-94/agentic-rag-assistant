@@ -17,3 +17,5 @@ langgraph
 
 rank-bm25
 sentence-transformers
+
+streamlit

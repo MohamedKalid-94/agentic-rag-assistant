@@ -1,14 +1,13 @@
 import re
 
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from ingestion import load_documents
 
 
 def clean_text(text: str):
     """Remove repeated PDF footer blocks and stray bullet placeholders."""
-
-    # Remove repeated PDF footer
     text = re.sub(
         r"120 Days · Agentic AI Engineering RoadMap 2026\s*"
         r"The Planner Sheet · Minimum 2 Hours / Day · Month-wise Topics · Week-wise Deliverables · Free Resources\s*"
@@ -16,195 +15,89 @@ def clean_text(text: str):
         "",
         text,
     )
-
-    # Remove standalone bullet placeholders
-    text = re.sub(
-        r"^\s*•\s*$",
-        "",
-        text,
-        flags=re.MULTILINE,
-    )
-
-    # Collapse excessive blank lines
-    text = re.sub(
-        r"\n\s*\n+",
-        "\n\n",
-        text,
-    )
-
+    text = re.sub(r"^\s*•\s*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\n\s*\n+", "\n\n", text)
     return text.strip()
 
 
 def split_documents(documents):
     """
-    Split documents by WEEK headings while carrying MONTH context
-    across PDF pages.
+    Split documents by WEEK headings while carrying MONTH context across pages.
+    Any page without WEEK headings falls back to plain fixed-size chunking,
+    instead of being silently dropped.
     """
-
     chunks = []
 
-    # Example:
-    # WEEK 1 Deep Learning Fundamentals & Neural Networks
-    #
-    # Also matches:
-    # WEEK 4 (Projects) ML Project Development & Deployment
-    week_pattern = re.compile(
-        r"(?m)^WEEK\s+(\d+)(?:\s+\(([^)]*)\))?\s*(.*)$"
-    )
+    week_pattern = re.compile(r"(?m)^WEEK\s+(\d+)(?:\s+\(([^)]*)\))?\s*(.*)$")
+    month_pattern = re.compile(r"(?m)^MONTH\s+(\d+)")
+    fallback_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
-    # Example:
-    # MONTH 2 · DAYS 31–60
-    month_pattern = re.compile(
-        r"(?m)^MONTH\s+(\d+)"
-    )
-
-    # Keep track of the current Month while moving
-    # through PDF pages.
     current_month = None
 
     for doc in documents:
-
         text = doc.page_content
 
-        # -----------------------------------------------------
-        # 1. Check whether this page contains a MONTH heading
-        # -----------------------------------------------------
-
-        month_matches = list(
-            month_pattern.finditer(text)
-        )
-
+        month_matches = list(month_pattern.finditer(text))
         if month_matches:
-            current_month = int(
-                month_matches[-1].group(1)
-            )
+            current_month = int(month_matches[-1].group(1))
 
-        # -----------------------------------------------------
-        # 2. Find WEEK headings on this page
-        # -----------------------------------------------------
-
-        matches = list(
-            week_pattern.finditer(text)
-        )
+        matches = list(week_pattern.finditer(text))
 
         if not matches:
+            # Fallback: no WEEK structure on this page — chunk it normally instead of dropping it
+            for chunk_text in fallback_splitter.split_text(text):
+                if not chunk_text.strip():
+                    continue
+                metadata = dict(doc.metadata)
+                metadata.update({
+                    "month": None,
+                    "week": None,
+                    "week_type": None,
+                    "section": "General",
+                })
+                chunks.append(Document(page_content=chunk_text, metadata=metadata))
             continue
 
-        # -----------------------------------------------------
-        # 3. Create one chunk for each WEEK
-        # -----------------------------------------------------
-
         for i, match in enumerate(matches):
-
-            # -------------------------------------------------
-            # Extract Week information FIRST
-            # -------------------------------------------------
-
-            week_number = int(
-                match.group(1)
-            )
-
+            week_number = int(match.group(1))
             week_type = match.group(2)
-
             week_title = match.group(3).strip()
 
-            # -------------------------------------------------
-            # Determine start/end of this Week
-            # -------------------------------------------------
-
             start = match.start()
-
-            if i + 1 < len(matches):
-                end = matches[i + 1].start()
-            else:
-                end = len(text)
-
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
             week_text = text[start:end].strip()
 
-            # -------------------------------------------------
-            # Build metadata
-            # -------------------------------------------------
-
             metadata = dict(doc.metadata)
-
-            metadata.update(
-                {
-                    "month": current_month,
-                    "week": week_number,
-                    "week_type": week_type,
-                    "section": week_title,
-                }
-            )
-
-            # -------------------------------------------------
-            # Add explicit hierarchy to embedding text
-            # -------------------------------------------------
+            metadata.update({
+                "month": current_month,
+                "week": week_number,
+                "week_type": week_type,
+                "section": week_title,
+            })
 
             if current_month is not None:
-
-                embedding_text = (
-                    f"MONTH {current_month}\n"
-                    f"WEEK {week_number}\n"
-                    f"{week_title}\n\n"
-                    f"{week_text}"
-                )
-
+                embedding_text = f"MONTH {current_month}\nWEEK {week_number}\n{week_title}\n\n{week_text}"
             else:
-
                 embedding_text = week_text
 
-            # -------------------------------------------------
-            # Create ONE LangChain Document
-            # -------------------------------------------------
-
-            chunks.append(
-                Document(
-                    page_content=embedding_text,
-                    metadata=metadata,
-                )
-            )
+            chunks.append(Document(page_content=embedding_text, metadata=metadata))
 
     return chunks
 
 
 def validate_chunks(chunks):
-    """Validate generated chunks."""
-
     if not chunks:
         print("Warning: No chunks were created.")
         return
-
-    empty_chunks = [
-        i
-        for i, chunk in enumerate(chunks)
-        if not chunk.page_content.strip()
-    ]
-
+    empty_chunks = [i for i, chunk in enumerate(chunks) if not chunk.page_content.strip()]
     if empty_chunks:
-        print(
-            f"Warning: {len(empty_chunks)} empty chunks found"
-        )
+        print(f"Warning: {len(empty_chunks)} empty chunks found")
     else:
         print("No empty chunks found")
-
-    lengths = [
-        len(chunk.page_content)
-        for chunk in chunks
-    ]
-
-    print(
-        f"Minimum chunk length: {min(lengths)}"
-    )
-
-    print(
-        f"Maximum chunk length: {max(lengths)}"
-    )
-
-    print(
-        f"Average chunk length: "
-        f"{sum(lengths) / len(lengths):.2f}"
-    )
-
+    lengths = [len(chunk.page_content) for chunk in chunks]
+    print(f"Minimum chunk length: {min(lengths)}")
+    print(f"Maximum chunk length: {max(lengths)}")
+    print(f"Average chunk length: {sum(lengths) / len(lengths):.2f}")
 
 if __name__ == "__main__":
 

@@ -23,20 +23,24 @@ def get_grader():
 
 
 def grade_relevance(question: str, chunks: list) -> RelevanceGrade:
-    """Uses the LLM to judge whether retrieved chunks actually answer the question."""
     if not chunks:
         return RelevanceGrade(is_relevant=False, reasoning="No chunks were retrieved.")
 
     context = "\n\n---\n\n".join(chunk[1] for chunk in chunks)
-
     grader = get_grader()
-    result = grader.invoke(
-        f"Question: {question}\n\n"
-        f"Retrieved content:\n{context}\n\n"
-        f"Does the retrieved content contain enough information to answer the question? "
-        f"Judge strictly — only mark relevant if the specific answer is actually present."
-    )
-    return result
+
+    try:
+        result = grader.invoke(
+            f"Question: {question}\n\n"
+            f"Retrieved content:\n{context}\n\n"
+            f"Does the retrieved content contain enough information to answer the question? "
+            f"Judge strictly — only mark relevant if the specific answer is actually present."
+        )
+        return result
+    except Exception as e:
+        print(f"[grade_relevance] Structured output parsing failed: {e}")
+        return RelevanceGrade(is_relevant=False, reasoning="Grading failed due to a parsing error — treated as not relevant.")
+
 
 
 def rewrite_query(original_question: str) -> str:
@@ -56,18 +60,22 @@ def get_groundedness_grader():
 
 
 def check_groundedness(answer: str, chunks: list) -> GroundednessGrade:
-    """Uses the LLM to verify the answer doesn't contain claims unsupported by the retrieved context."""
     context = "\n\n---\n\n".join(chunk[1] for chunk in chunks)
-
     grader = get_groundedness_grader()
-    result = grader.invoke(
-        f"Context:\n{context}\n\n"
-        f"Generated answer:\n{answer}\n\n"
-        f"Does this answer contain ONLY information that is directly supported by the context? "
-        f"Flag it as NOT grounded if it adds any fact, number, or claim not present in the context above. "
-        f"An honest 'I don't know' / 'the context doesn't contain this' answer should always be marked grounded."
-    )
-    return result
+
+    try:
+        result = grader.invoke(
+            f"Context:\n{context}\n\n"
+            f"Generated answer:\n{answer}\n\n"
+            f"Does this answer contain ONLY information that is directly supported by the context? "
+            f"Flag it as NOT grounded if it adds any fact, number, or claim not present in the context above. "
+            f"An honest 'I don't know' / 'the context doesn't contain this' answer should always be marked grounded."
+        )
+        return result
+    except Exception as e:
+        print(f"[check_groundedness] Structured output parsing failed: {e}")
+        return GroundednessGrade(is_grounded=False, reasoning="Groundedness check failed due to a parsing error — treated as not grounded, triggering a retry.")
+
 
 
 if __name__ == "__main__":

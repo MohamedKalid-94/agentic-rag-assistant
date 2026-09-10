@@ -3,13 +3,16 @@ from langchain_groq import ChatGroq
 
 load_dotenv()
 
+
 def get_generator():
     return ChatGroq(model="openai/gpt-oss-20b", temperature=0)
+
 
 def generate_answer(question: str, chunks: list) -> str:
     """
     Generates an answer strictly grounded in the retrieved chunks,
-    with source citations (month/week/section).
+    with source citations. Falls back to filename-based citation
+    for chunks that don't have month/week metadata (e.g. non-roadmap PDFs).
     """
     if not chunks:
         return "I don't have enough information in the document to answer this question."
@@ -17,7 +20,15 @@ def generate_answer(question: str, chunks: list) -> str:
     # Build context with source labels the LLM can cite
     context_parts = []
     for chunk_id, doc, distance, metadata in chunks:
-        source_label = f"[Month {metadata.get('month')}, Week {metadata.get('week')} — {metadata.get('section')}]"
+        month = metadata.get('month')
+        week = metadata.get('week')
+
+        if month is not None and week is not None:
+            source_label = f"[Month {month}, Week {week} — {metadata.get('section')}]"
+        else:
+            filename = metadata.get('source', 'Unknown source').split('/')[-1].split('\\')[-1]
+            source_label = f"[{filename} — {metadata.get('section', 'General')}]"
+
         context_parts.append(f"{source_label}\n{doc}")
 
     context = "\n\n---\n\n".join(context_parts)
@@ -25,13 +36,15 @@ def generate_answer(question: str, chunks: list) -> str:
     llm = get_generator()
     prompt = (
         f"Answer the question using ONLY the information in the context below. "
-        f"Do not use any outside knowledge. If the context doesn't contain the answer, say so clearly.\n\n"
-        f"After your answer, cite which source(s) you used in this format: (Source: Month X, Week Y).\n\n"
+        f"Do not use any outside knowledge. If the context doesn't contain the answer, say so clearly "
+        f"and do NOT include a source citation in that case.\n\n"
+        f"If you DO find the answer in the context, cite which source(s) you used in this format: "
+        f"(Source: Month X, Week Y) for roadmap content, or (Source: filename) for other documents.\n\n"
         f"Context:\n{context}\n\n"
         f"Question: {question}\n\n"
         f"Answer:"
     )
-    
+
     response = llm.invoke(prompt)
     return response.content
 

@@ -6,133 +6,48 @@ from embeddings import get_embedding_model
 from query_analyzer import extract_filters
 
 
-# --------------------------------------------------
-# 1. LOAD DOCUMENTS
-# --------------------------------------------------
+def rebuild_vector_store(documents_folder: str = "data/documents") -> int:
+    """
+    Runs the full ingestion pipeline: load -> clean -> chunk -> embed -> store.
+    Always clears the old collection first, so stale chunks never linger
+    when the document set changes.
+    """
+    documents = load_documents(documents_folder)
 
-documents = load_documents("data/documents")
-print(f"Loaded {len(documents)} documents/pages")
+    for doc in documents:
+        doc.page_content = clean_text(doc.page_content)
 
+    chunks = split_documents(documents)
 
-# --------------------------------------------------
-# 2. CLEAN TEXT
-# --------------------------------------------------
+    embedder = get_embedding_model()
+    client = chromadb.PersistentClient(path="data/chroma_db")
 
-for doc in documents:
-    doc.page_content = clean_text(doc.page_content)
+    try:
+        client.delete_collection(name="roadmap_collection")
+    except Exception:
+        pass  # doesn't exist yet on first run — fine
 
-
-# --------------------------------------------------
-# 3. CREATE CHUNKS
-# --------------------------------------------------
-
-chunks = split_documents(documents)
-print(f"Total chunks: {len(chunks)}")
-
-
-# --------------------------------------------------
-# 4. LOAD EMBEDDING MODEL
-# --------------------------------------------------
-
-embedder = get_embedding_model()
-
-
-# --------------------------------------------------
-# 5. CREATE CHROMA CLIENT
-# --------------------------------------------------
-
-client = chromadb.PersistentClient(path="data/chroma_db")
-
-
-# --------------------------------------------------
-# 6. CREATE / GET COLLECTION
-# --------------------------------------------------
-
-collection = client.get_or_create_collection(
-    name="roadmap_collection",
-    metadata={"hnsw:space": "cosine"}
-)
-
-print("\nChroma collection metadata:")
-print(collection.metadata)
-
-
-# --------------------------------------------------
-# 7. PREPARE DATA
-# --------------------------------------------------
-
-ids = [f"chunk_{i}" for i in range(len(chunks))]
-texts = [chunk.page_content for chunk in chunks]
-metadatas = [chunk.metadata for chunk in chunks]
-
-
-# --------------------------------------------------
-# 8. GENERATE EMBEDDINGS
-# --------------------------------------------------
-
-embeddings = embedder.embed_documents(texts)
-print(f"Generated {len(embeddings)} embeddings")
-print(f"Embedding dimension: {len(embeddings[0])}")
-
-
-# --------------------------------------------------
-# 9. STORE EVERYTHING IN CHROMA
-# --------------------------------------------------
-
-collection.upsert(
-    ids=ids,
-    documents=texts,
-    embeddings=embeddings,
-    metadatas=metadatas
-)
-print(f"Stored {collection.count()} chunks in Chroma")
-
-
-# --------------------------------------------------
-# 10. FILTERED SIMILARITY SEARCH
-# --------------------------------------------------
-
-query = "What topics are covered in Week 1 of Month 2?"
-query_embedding = embedder.embed_query(query)
-
-filters = extract_filters(query)
-print(f"\nExtracted filters: {filters}")
-
-if filters:
-    where_clause = filters if len(filters) == 1 else {"$and": [{k: v} for k, v in filters.items()]}
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=5,
-        where=where_clause
-    )
-else:
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=5
+    collection = client.create_collection(
+        name="roadmap_collection",
+        metadata={"hnsw:space": "cosine"}
     )
 
+    ids = [f"chunk_{i}" for i in range(len(chunks))]
+    texts = [chunk.page_content for chunk in chunks]
+    metadatas = [chunk.metadata for chunk in chunks]
 
-# --------------------------------------------------
-# 11. DISPLAY RESULTS
-# --------------------------------------------------
+    embeddings = embedder.embed_documents(texts)
 
-print("\n" + "=" * 70)
-print(f"QUERY: {query}")
-print("=" * 70)
+    collection.upsert(
+        ids=ids,
+        documents=texts,
+        embeddings=embeddings,
+        metadatas=metadatas
+    )
 
-for rank, (result_id, document, metadata, distance) in enumerate(
-    zip(
-        results["ids"][0],
-        results["documents"][0],
-        results["metadatas"][0],
-        results["distances"][0]
-    ),
-    start=1
-):
-    print("\n" + "-" * 70)
-    print(f"Rank     : {rank}")
-    print(f"ID       : {result_id}")
-    print(f"Distance : {distance:.4f}")
-    print(f"Metadata : {metadata}")
-    print("\nPreview:")
-    print(document[:500])
+    return len(chunks)
+
+
+if __name__ == "__main__":
+    count = rebuild_vector_store()
+    print(f"Stored {count} chunks in Chroma")
