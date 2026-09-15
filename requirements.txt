@@ -1,21 +1,21 @@
 langchain
 langchain-groq
-python-dotenv
-
-pypdf
 langchain-community
-
-langchain-text-splitters
-
-sentence-transformers
 langchain-huggingface
-numpy
-
-chromadb
+langchain-text-splitters
 
 langgraph
 
-rank-bm25
+python-dotenv
+
+pydantic
+
+chromadb
+
 sentence-transformers
+
+rank-bm25
+
+numpy
 
 streamlit
