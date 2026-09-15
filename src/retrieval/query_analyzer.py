@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Optional
 from langchain_groq import ChatGroq
+from config import GROQ_MODEL
 
 load_dotenv()
 
@@ -18,7 +19,7 @@ class QueryFilter(BaseModel):
 
 
 def get_filter_extractor():
-    llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0)
+    llm = ChatGroq(model=GROQ_MODEL, temperature=0)
     return llm.with_structured_output(QueryFilter)
 
 

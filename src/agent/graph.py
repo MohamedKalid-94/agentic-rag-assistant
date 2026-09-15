@@ -1,11 +1,10 @@
 from langgraph.graph import StateGraph, END
-from state import AgentState
-from nodes import (
+from agent.state import AgentState
+from agent.nodes import (
     retrieve_node, grade_node, rewrite_node,
     generate_node, check_groundedness_node,
     check_relevance, check_groundedness_edge
 )
-
 
 builder = StateGraph(AgentState)
 

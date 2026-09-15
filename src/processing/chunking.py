@@ -2,9 +2,9 @@ import re
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-from ingestion import load_documents
-
+from ingestion.loader import load_documents
+from config import CHUNK_SIZE, CHUNK_OVERLAP
+from config import DOCUMENTS_FOLDER
 
 def clean_text(text: str):
     """Remove repeated PDF footer blocks and stray bullet placeholders."""
@@ -30,7 +30,7 @@ def split_documents(documents):
 
     week_pattern = re.compile(r"(?m)^WEEK\s+(\d+)(?:\s+\(([^)]*)\))?\s*(.*)$")
     month_pattern = re.compile(r"(?m)^MONTH\s+(\d+)")
-    fallback_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    fallback_splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
 
     current_month = None
 
@@ -105,9 +105,7 @@ if __name__ == "__main__":
     # 1. Load PDF pages
     # ---------------------------------------------------------
 
-    documents = load_documents(
-        "data/documents"
-    )
+    documents = load_documents(DOCUMENTS_FOLDER)
 
     print(
         f"Loaded {len(documents)} pages"

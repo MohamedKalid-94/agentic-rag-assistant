@@ -1,12 +1,13 @@
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
+from config import GROQ_MODEL
+
 load_dotenv()
 
 
 def get_generator():
-    return ChatGroq(model="openai/gpt-oss-20b", temperature=0)
-
+    return ChatGroq(model=GROQ_MODEL, temperature=0)
 
 def generate_answer(question: str, chunks: list) -> str:
     """
@@ -50,7 +51,7 @@ def generate_answer(question: str, chunks: list) -> str:
 
 
 if __name__ == "__main__":
-    from retriever import retrieve
+    from retrieval.retriever import retrieve
 
     question = "What topics are covered in Week 1 of Month 2?"
     chunks, filters = retrieve(question)

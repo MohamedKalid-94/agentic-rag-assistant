@@ -1,8 +1,8 @@
-from state import AgentState
-from retriever import retrieve
-from grader import grade_relevance, rewrite_query, check_groundedness
-from generator import generate_answer
-
+from agent.state import AgentState
+from retrieval.retriever import retrieve
+from prompting.grader import grade_relevance, rewrite_query, check_groundedness
+from prompting.generator import generate_answer
+from config import MAX_RETRIEVAL_ATTEMPTS, MAX_GENERATION_ATTEMPTS
 
 def retrieve_node(state: AgentState) -> AgentState:
     """LangGraph node: retrieves chunks for the current question."""
@@ -46,12 +46,11 @@ def check_groundedness_node(state: AgentState) -> AgentState:
     print(f"[check_groundedness_node] Grounded: {grounded.is_grounded} — {grounded.reasoning}")
     return state
 
-
 def check_relevance(state: AgentState) -> str:
     """Conditional: decide whether to retry retrieval or move to generation."""
     if state["is_relevant"]:
         return "generate"
-    if state["attempts"] >= 3:
+    if state["attempts"] >= MAX_RETRIEVAL_ATTEMPTS:
         print("[check_relevance] Max attempts reached — generating best-effort answer anyway")
         return "generate"
     return "retry"
@@ -61,7 +60,7 @@ def check_groundedness_edge(state: AgentState) -> str:
     """Conditional: if the answer isn't grounded, regenerate — up to a max of 2 tries."""
     if state["is_grounded"]:
         return "done"
-    if state["generation_attempts"] >= 2:
+    if state["generation_attempts"] >= MAX_GENERATION_ATTEMPTS:
         print("[check_groundedness_edge] Max generation attempts reached — returning best-effort answer")
         return "done"
     return "regenerate"

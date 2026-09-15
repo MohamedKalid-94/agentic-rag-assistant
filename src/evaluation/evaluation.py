@@ -1,7 +1,6 @@
-from retriever import retrieve
-from grader import grade_relevance, check_groundedness
-from generator import generate_answer
-
+from retrieval.retriever import retrieve
+from prompting.grader import grade_relevance, check_groundedness
+from prompting.generator import generate_answer
 
 # A small hand-built evaluation set: (question, expected_chunk_id)
 EVAL_SET = [

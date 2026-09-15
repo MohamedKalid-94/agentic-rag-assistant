@@ -49,8 +49,8 @@
 - [x] **Day 9:** Build the Generate answer node — prompt template that answers strictly from context and cites sources
 - [x] **Day 10:** Build the Check groundedness node (LLM verifies no hallucination) + conditional edge back to Generate on failure
 - [x] **Day 11:** Wire the full graph end-to-end (Query → Retrieve → Grade → Generate → Check → Finalize), test with real questions including ones that should trigger both loops
-- [ ] **Day 12:** Add hybrid search (BM25 + vector) and reranking inside the Retrieve node; build a small eval set, measure retrieval relevance + answer faithfulness
-- [ ] **Day 13:** Streamlit UI — upload PDFs, ask questions, show the agent's reasoning trace; test edge cases (no answer in docs, vague questions)
+- [x] **Day 12:** Add hybrid search (BM25 + vector) and reranking inside the Retrieve node; build a small eval set, measure retrieval relevance + answer faithfulness
+- [X] **Day 13:** Streamlit UI — upload PDFs, ask questions, show the agent's reasoning trace; test edge cases (no answer in docs, vague questions)
 - [ ] **Day 14:** README explaining the architecture and why it's agentic (not naive RAG), clean GitHub push, prepare a full interview walkthrough
 
 ---

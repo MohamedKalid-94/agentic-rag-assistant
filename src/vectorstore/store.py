@@ -1,12 +1,11 @@
 import chromadb
 
-from ingestion import load_documents
-from chunking import clean_text, split_documents
-from embeddings import get_embedding_model
-from query_analyzer import extract_filters
+from ingestion.loader import load_documents
+from processing.chunking import clean_text, split_documents
+from embeddings.embedder import get_embedding_model
+from config import CHROMA_DB_PATH, COLLECTION_NAME, DOCUMENTS_FOLDER
 
-
-def rebuild_vector_store(documents_folder: str = "data/documents") -> int:
+def rebuild_vector_store(documents_folder: str = DOCUMENTS_FOLDER) -> int:
     """
     Runs the full ingestion pipeline: load -> clean -> chunk -> embed -> store.
     Always clears the old collection first, so stale chunks never linger
@@ -20,15 +19,15 @@ def rebuild_vector_store(documents_folder: str = "data/documents") -> int:
     chunks = split_documents(documents)
 
     embedder = get_embedding_model()
-    client = chromadb.PersistentClient(path="data/chroma_db")
+    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
 
     try:
-        client.delete_collection(name="roadmap_collection")
+        client.delete_collection(name=COLLECTION_NAME)
     except Exception:
         pass  # doesn't exist yet on first run — fine
 
     collection = client.create_collection(
-        name="roadmap_collection",
+        name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"}
     )
 

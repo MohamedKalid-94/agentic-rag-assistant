@@ -21,8 +21,10 @@ def cosine_similarity(a, b):
 
 if __name__ == "__main__":
 
-    from ingestion import load_documents
-    from chunking import clean_text, split_documents
+    from ingestion.loader import load_documents
+    from processing.chunking import clean_text, split_documents
+
+    # ... rest of the file stays exactly the same ...
 
     # ---------------------------------------------------------
     # 1. LOAD DOCUMENTS

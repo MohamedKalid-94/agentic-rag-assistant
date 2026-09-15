@@ -1,17 +1,19 @@
 from rank_bm25 import BM25Okapi
 import chromadb
-from embeddings import get_embedding_model
-from query_analyzer import extract_filters
-from ingestion import load_documents
-from chunking import clean_text, split_documents
+
 from sentence_transformers import CrossEncoder
+from embeddings.embedder import get_embedding_model
+from retrieval.query_analyzer import extract_filters
+from ingestion.loader import load_documents
+from processing.chunking import clean_text, split_documents
+from config import CHROMA_DB_PATH, COLLECTION_NAME, RERANKER_MODEL_NAME, DOCUMENTS_FOLDER
 
 _reranker = None
 
 def get_reranker():
     global _reranker
     if _reranker is None:
-        _reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        _reranker = CrossEncoder(RERANKER_MODEL_NAME)
     return _reranker
 
 
@@ -29,16 +31,16 @@ def rerank(question: str, candidates: list, top_n: int = 3) -> list:
 
 def get_vector_store():
     """Connects to the existing Chroma collection."""
-    client = chromadb.PersistentClient(path="data/chroma_db")
+    client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
     collection = client.get_or_create_collection(
-        name="roadmap_collection",
+        name=COLLECTION_NAME,
         metadata={"hnsw:space": "cosine"}
     )
     return collection
 
 def get_bm25_index():
     """Builds a BM25 keyword index over all chunks (rebuilt fresh each call for simplicity)."""
-    documents = load_documents("data/documents")
+    documents = load_documents(DOCUMENTS_FOLDER)
     for doc in documents:
         doc.page_content = clean_text(doc.page_content)
     chunks = split_documents(documents)

@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
+from config import GROQ_MODEL
 
 load_dotenv()
 
@@ -18,9 +19,8 @@ class GroundednessGrade(BaseModel):
 
 
 def get_grader():
-    llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0)
+    llm = ChatGroq(model=GROQ_MODEL, temperature=0)
     return llm.with_structured_output(RelevanceGrade)
-
 
 def grade_relevance(question: str, chunks: list) -> RelevanceGrade:
     if not chunks:
@@ -45,7 +45,7 @@ def grade_relevance(question: str, chunks: list) -> RelevanceGrade:
 
 def rewrite_query(original_question: str) -> str:
     """Uses the LLM to rewrite a question that failed to retrieve relevant chunks."""
-    llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0.3)
+    llm = ChatGroq(model=GROQ_MODEL, temperature=0.3)
     response = llm.invoke(
         f"This question failed to retrieve relevant results from a document search: '{original_question}'\n"
         f"Rewrite it as a clearer, more specific search query that might retrieve better results. "
@@ -55,7 +55,7 @@ def rewrite_query(original_question: str) -> str:
 
 
 def get_groundedness_grader():
-    llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0)
+    llm = ChatGroq(model=GROQ_MODEL, temperature=0)
     return llm.with_structured_output(GroundednessGrade)
 
 
@@ -79,8 +79,8 @@ def check_groundedness(answer: str, chunks: list) -> GroundednessGrade:
 
 
 if __name__ == "__main__":
-    from retriever import retrieve
-    from generator import generate_answer
+    from retrieval.retriever import retrieve
+    from prompting.generator import generate_answer
 
     question = "What topics are covered in Week 1 of Month 2?"
     chunks, filters = retrieve(question)

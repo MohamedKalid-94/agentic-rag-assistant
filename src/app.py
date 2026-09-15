@@ -1,7 +1,7 @@
 import streamlit as st
 import os
-from vector_store import rebuild_vector_store
-from graph import graph
+from vectorstore.store import rebuild_vector_store
+from agent.graph import graph
 
 st.set_page_config(page_title="Agentic RAG Assistant", page_icon="🤖")
 
